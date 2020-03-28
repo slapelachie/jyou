@@ -10,6 +10,8 @@ import tqdm
 from utils.settings import CACHE_PATH, DATA_PATH, DEBUG_MODE
 from utils import utils, log
 
+from PIL import Image, ImageFilter
+
 display_re = r"([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)" # Regex to find the monitor resolutions
 lockscreen_dir = os.path.join(CACHE_PATH, 'lockscreen')
 
@@ -56,7 +58,7 @@ class LockscreenGenerate:
 		self.screen_md5 = utils.md5(subprocess.check_output(["xrandr"]))[:20]
 		
 
-	def generate(self, override=False):
+	def generate(self, blur=str(8), brightness=str(0.6), override=False):
 		"""Generate the lockscreen image"""
 		# Apply this function to every image in the passed list
 		non_gen_imgs = []
@@ -77,8 +79,13 @@ class LockscreenGenerate:
 				image = non_gen_imgs[i][0]
 				img_path = non_gen_imgs[i][1]
 
-				tmp_imgs = []
-				params = ""
+				img = Image.open(image)
+				img_width, img_height = img.size
+
+				screens = []
+				screens_offset = []
+				screens_size = []
+
 				output_img_height=0
 				output_img_width=0
 
@@ -89,45 +96,60 @@ class LockscreenGenerate:
 				# Get all resolutions
 				resolutions = re.findall(display_re,str(p))
 
+				tqdm_logger.log(15, "["+ str(i+1) + "/" + str(len(self.image)) + "] Generating lockscreen for: " + image + "...")
 				# Repeat for every screen the user has
 				for resolution in resolutions:
 					width, height, screen_x, screen_y = map(int, resolution)
-					# Set a name for the temp image being created for the current resolution
-					tmp_img = os.path.join(lockscreen_dir, "tmp_"+ str(width)+"x"+str(height)+"_"+img_md5)
-					# Add to the 'to be deleted later' list
-					tmp_imgs.append(tmp_img)
-
-					# Check if the temp file already exists
-					if not os.path.isfile(tmp_img):
-						# Change the size of the image passed from the class
-						subprocess.run(["convert", image, '-resize', str(width) + "X" + str(height)+"^", '-gravity', 'Center', '-crop', str(width) + "X" + str(height) + "+0+0", '+repage', tmp_img])
-					
+	
 					if output_img_width < width+screen_x:
 						output_img_width = width+screen_x
 					
 					if output_img_height < height+screen_y:
 						output_img_height = height+screen_y
 
-					# Params for this image when converted later on
-					params = params + " " + tmp_img + " -geometry +" + str(screen_x) + "+" + str(screen_y) + " -composite -fill black -colorize 50% -blur 0x4"
-				
-				tqdm_logger.log(15, "["+ str(i+1) + "/" + str(len(self.image)) + "] Generating lockscreen for: " + image + "...")
+					screens_size.append((width, height))
+					screens_offset.append((screen_x, screen_y))
 
-				# Create the background for the final image
-				subprocess.run(["convert", "-size", str(output_img_width)+"x"+str(output_img_height), "xc:rgb(1,0,0)", img_path])
+					ratio = min(img_width/width, img_height/height)
+					rwidth = int(img_width/ratio)
+					rheight = int(img_height/ratio)
 
-				# Flatten the arguments to be a one level list item
-				args = [["convert", img_path], params.split(" "), [img_path]]
-				args = [y for x in args for y in x]
-				while "" in args:
-					args.remove("")
+					crop_box = (
+						(rwidth-width)/2,
+						(rheight-height)/2,
+						(rwidth+width)/2,
+						(rheight+height)/2
+					)
 
-				# Create the final image
-				subprocess.run(args)
+					img = img.resize((rwidth, rheight), Image.LANCZOS)
+					img = img.crop(crop_box)
 
-				# Remove the temp files
-				for file in tmp_imgs:
-					os.remove(file)
+					if blur:
+						if blur.isdigit():
+							if not int(blur) == 0:
+								img = img.filter(ImageFilter.GaussianBlur(int(blur)))
+						else:
+							tqdm_logger.warning("Parsed blur is not an integer, applying no blur...")
+	
+					screens.append(img)
+	
+				# Create the background image
+				background = Image.new('RGB', (output_img_width, output_img_height), (0, 0, 0))
+
+				# Add the images in their locations onto the new image
+				for i in range(len(screens)):
+					background.paste(screens[i], screens_offset[i])
+							
+				if brightness:
+					try:
+						if not float(brightness) == 1.0:
+							background = background.point(lambda p: p * float(brightness))
+					except:
+						tqdm_logger.warning("Parsed brightness is not an integer, not changing brightness...")
+
+
+				# Save the image
+				background.save(img_path)
 		else:
 			logger.info("No lockscreens to generate.")
 

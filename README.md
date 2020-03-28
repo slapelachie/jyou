@@ -13,6 +13,10 @@ The arguments are the following:
 | -h, --help| Shows the help message for the wallpaper subcommand |
 | -g        | Switch for generating the lockscreen |
 | -i        | The input file |
+| -v        | Allows verbose logging |
+| -q        | Allows for just error logging |
+| -b        | The radius to blur |
+| -d        | The darkness (darker < 1.0 < lighter) |
 | --clear   | Clears the cache |
 
 ## Installation

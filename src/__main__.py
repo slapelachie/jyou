@@ -19,7 +19,7 @@ logger = log.setup_logger(__name__, logging.INFO, log.defaultLoggingHandler())
 def get_args():
 	""" Get the args parsed from the command line and does arg handling stuff """
 
-	arg = argparse.ArgumentParser(description="Generate and switch wallpaper themes")
+	arg = argparse.ArgumentParser(description="Generate and switch lockscreen images")
 
 	arg.add_argument('-v', action='store_true',
 		help='Verbose Logging')
@@ -32,6 +32,12 @@ def get_args():
 
 	arg.add_argument("-i", metavar="\"path/to/dir\"",
 		help="The input file or directory")
+
+	arg.add_argument('-b', metavar="radius",
+		help="Radius for the blur")
+	
+	arg.add_argument('-d', metavar="brightness",
+		help="The brightness of the image (darker < 1.0 < lighter)")
 
 	arg.add_argument('--override', action="store_true",
 		help="Override exisiting lockscreen")
@@ -62,7 +68,7 @@ def parse_args(parser):
 
 	if args.i:
 		if args.g:
-			LockscreenGenerate(args.i, VERBOSE_MODE).generate()
+			LockscreenGenerate(args.i, VERBOSE_MODE).generate(args.b, args.d)
 		else:
 			LockscreenGenerate(args.i, VERBOSE_MODE).update()	
 	
