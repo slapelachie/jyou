@@ -1,7 +1,5 @@
-from . import lockscreen
-from . import theme
+from . import generator
 
 __all__ = [
-	"lockscreen",
-	"theme",
+	"generator",
 ]

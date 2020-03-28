@@ -7,10 +7,15 @@ import sys
 import logging
 import tqdm
 
-from utils.settings import DATA_LOCKSCREEN_PATH, DEBUG_MODE
+from utils.settings import CACHE_PATH, DATA_PATH, DEBUG_MODE
 from utils import utils, log
 
 display_re = r"([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)" # Regex to find the monitor resolutions
+lockscreen_dir = os.path.join(CACHE_PATH, 'lockscreen')
+
+try:
+	os.makedirs(lockscreen_dir, exist_ok=True)
+except: raise
 
 logger = log.setup_logger(__name__+'default', logging.INFO, log.defaultLoggingHandler())
 tqdm_logger = log.setup_logger(__name__+'.tqdm', logging.INFO, log.TqdmLoggingHandler())
@@ -61,7 +66,7 @@ class LockscreenGenerate:
 			# Get the images md5 hash
 			img_md5 = utils.md5_file(image)[:20]
 			# Set the path for the final image
-			img_path = os.path.join(DATA_LOCKSCREEN_PATH, img_md5 + "_" + self.screen_md5 + ".png")
+			img_path = os.path.join(lockscreen_dir, img_md5 + "_" + self.screen_md5 + ".png")
 
 			if not os.path.isfile(img_path) or override:
 				non_gen_imgs.append([image, img_path])				
@@ -88,7 +93,7 @@ class LockscreenGenerate:
 				for resolution in resolutions:
 					width, height, screen_x, screen_y = map(int, resolution)
 					# Set a name for the temp image being created for the current resolution
-					tmp_img = os.path.join(DATA_LOCKSCREEN_PATH, "tmp_"+ str(width)+"x"+str(height)+"_"+img_md5)
+					tmp_img = os.path.join(lockscreen_dir, "tmp_"+ str(width)+"x"+str(height)+"_"+img_md5)
 					# Add to the 'to be deleted later' list
 					tmp_imgs.append(tmp_img)
 
@@ -133,15 +138,16 @@ class LockscreenGenerate:
 		images = self.image
 		random.shuffle(images)
 		image = images[0]
+		self.image = [image]
 
 		# Get the md5 hash of the image
 		img_md5 = utils.md5_file(image)[:20]
 		# Set the image path location
-		img_path = os.path.join(DATA_LOCKSCREEN_PATH, img_md5 + "_" + self.screen_md5 + ".png")
+		img_path = os.path.join(lockscreen_dir, img_md5 + "_" + self.screen_md5 + ".png")
 
 		# Copy the image if it exists
 		if os.path.isfile(img_path):
-			symlink_path = os.path.join(DATA_LOCKSCREEN_PATH, 'lockscreen')
+			symlink_path = os.path.join(CACHE_PATH, 'current_lockscreen.png')
 
 			if os.path.isfile(symlink_path):
 				os.remove(symlink_path)
