@@ -175,6 +175,9 @@ class LockscreenGenerate:
 				os.remove(symlink_path)
 
 			os.symlink(img_path, symlink_path)
+
+			# Run postscripts
+			utils.run_post_scripts(image)
 		else:
 			self.generate()
 			self.update()
