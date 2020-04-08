@@ -73,6 +73,13 @@ class LockscreenGenerate:
 			if not os.path.isfile(img_path) or override:
 				non_gen_imgs.append([image, img_path])				
 
+		# Execute and get the output from xrandr
+		cmd = ['xrandr']
+		p = subprocess.check_output(cmd)
+
+		# Get all resolutions
+		resolutions = re.findall(display_re,str(p))
+
 		if len(non_gen_imgs) > 0:
 			logger.info("Generating lockscreens...")
 			for i in tqdm.tqdm(range(len(non_gen_imgs))):
@@ -87,14 +94,7 @@ class LockscreenGenerate:
 				screens_size = []
 
 				output_img_height=0
-				output_img_width=0
-
-				# Execute and get the output from xrandr
-				cmd = ['xrandr']
-				p = subprocess.check_output(cmd)
-
-				# Get all resolutions
-				resolutions = re.findall(display_re,str(p))
+				output_img_width=0	
 
 				tqdm_logger.log(15, "["+ str(i+1) + "/" + str(len(self.image)) + "] Generating lockscreen for: " + image + "...")
 				# Repeat for every screen the user has

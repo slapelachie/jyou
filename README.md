@@ -25,13 +25,15 @@ The arguments are the following:
 
 #### Python
  - [tqdm](https://pypi.org/project/tqdm/)
+ - [Pillow](https://pypi.org/project/Pillow/)
 
 #### Additional Programs
  - [xrandr](https://www.archlinux.org/packages/extra/x86_64/xorg-xrandr/)
- - [ImageMagick](https://www.archlinux.org/packages/extra/x86_64/imagemagick/)
 
 ### Process
-To install this, go to the project root (where this README is) and run the command `$ make && make install && make clean`
+To install this, go to the project root (where this README is) and run the command `$ make && make install && make clean`.
+
+This method assumes that `~/.local/bin/` is set in the `$PATH` environmental variable.
 
 ## Postscripts
 Post scripts are executables that are run after one of the sub commands are completed.
@@ -41,7 +43,7 @@ To create a postscript, do the following:
 	 - Where `##` is a number from 00-99 (The files are loaded in numerical order)
  	 - Where `name` is the name of it
 
-2. Add this file under ~/.local/share/jyou/postscripts
-3. Make it executable (under linux `chmod +x filename` works)
+2. Add this file under `~/.local/share/jyou/postscripts`
+3. Make it executable (`chmod +x filename`)
 
 For examples of postscripts look under `examples/postscripts`
