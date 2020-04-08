@@ -7,8 +7,8 @@ import sys
 import logging
 import tqdm
 
-from utils.settings import CACHE_PATH, DATA_PATH, DEBUG_MODE
-from utils import utils, log
+from .settings import CACHE_PATH, DATA_PATH, DEBUG_MODE
+from . import utils, log
 
 from PIL import Image, ImageFilter
 

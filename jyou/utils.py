@@ -3,7 +3,7 @@ import os
 import re
 import subprocess
 
-from utils.settings import DATA_PATH
+from .settings import DATA_PATH
 
 def md5(string):
 	"""

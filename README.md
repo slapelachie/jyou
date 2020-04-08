@@ -1,6 +1,6 @@
 # JYOU
 Simple lockscreen manager for tiling window managers.
-Generates a lockscreen for multiscreened i3locks
+Generates a lockscreen for multiscreened i3lock.
 
 ## How to use
 If you ever get stuck on the syntax of this command, execute: `jyou -h` for the list of avaliable arguments.
@@ -30,8 +30,11 @@ The arguments are the following:
 #### Additional Programs
  - [xrandr](https://www.archlinux.org/packages/extra/x86_64/xorg-xrandr/)
 
-### Process
-To install this, go to the project root (where this README is) and run the command `$ make && make install && make clean`.
+#### System Wide Install
+To install system wide, run `$ pip install jyou` or if from source `$ pip install .`
+
+#### User Install
+To install for just the user, un `$pip install --user jyou` or if from source `$ pip install --user .`
 
 This method assumes that `~/.local/bin/` is set in the `$PATH` environmental variable.
 

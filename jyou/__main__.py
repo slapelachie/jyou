@@ -10,9 +10,9 @@ import os.path
 import logging
 import shutil
 
-from utils.settings import DATA_PATH, CONFIG_PATH, CACHE_PATH
-from utils import utils,log
-from generators.generator import LockscreenGenerate
+from . import utils,log
+from .settings import DATA_PATH, CONFIG_PATH, CACHE_PATH
+from .generator import LockscreenGenerate
 
 logger = log.setup_logger(__name__, logging.INFO, log.defaultLoggingHandler())
 
