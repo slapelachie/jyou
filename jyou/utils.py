@@ -74,4 +74,5 @@ def run_post_scripts(args=None):
 			script = [[script], args.split(" ")]
 			script = [y for x in script for y in x]
 
-		subprocess.run(script)
+		with open(os.devnull, 'w') as devnull:
+			subprocess.run(script, stdout=devnull, stderr=subprocess.STDOUT)

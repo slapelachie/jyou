@@ -86,7 +86,7 @@ class LockscreenGenerate:
 				image = non_gen_imgs[i][0]
 				img_path = non_gen_imgs[i][1]
 
-				img = Image.open(image)
+				img = Image.open(image).convert("RGB") 
 				img_width, img_height = img.size
 
 				screens = []

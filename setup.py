@@ -24,6 +24,5 @@ setup(name='JYOU',
 	install_requires = [
 		'Pillow',
 		'tqdm',
-		'colorthief'
 	],
 	zip_safe=False)
