@@ -3,7 +3,7 @@ from setuptools import setup
 LONG_DESC = open('README.md').read()
 
 setup(name='JYOU',
-	version='1.0a1',
+	version='1.0a2',
 	description='Simple lockscreen manager for tiling window managers. Generates a lockscreen for multiscreened i3locks',
 	long_description_content_type="text/markdown",
 	long_description=LONG_DESC,
