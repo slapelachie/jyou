@@ -51,6 +51,9 @@ class LockscreenGenerator:
 	def setVerboseLogging(self, state):
 		self.verbose_logging = state
 
+	def setOutputPath(self, path):
+		self.lockscreen_dir = os.path.expanduser(path)
+
 	def setProgress(self, state):
 		self.progressbar = state
 

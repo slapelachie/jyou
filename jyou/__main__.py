@@ -69,6 +69,7 @@ def parse_args(parser):
 		blur_strength = config_handler.compareFlagWithConfig(args.b, config_handler.parse_config()['blur'])
 		brightness = config_handler.compareFlagWithConfig(args.d, config_handler.parse_config()['brightness'])
 		progress = config_handler.compareFlagWithConfig(args.progress, config_handler.parse_config()['progress'])
+		output_path = os.path.join(config_handler.parse_config()['out_directory'], 'lockscreen')
 
 		generator = LockscreenGenerator(args.i)
 		generator.setBlur(blur_strength)
@@ -76,6 +77,7 @@ def parse_args(parser):
 		generator.setVerboseLogging(verbose_logging)
 		generator.setOverride(args.override)
 		generator.setProgress(progress)
+		generator.setOutputPath(output_path)
 
 		if args.g:
 			generator.generate()
