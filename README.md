@@ -1,4 +1,5 @@
 # JYOU
+![Run Tests](https://github.com/slapelachie/jyou/workflows/Run%20Tests/badge.svg)
 Simple lockscreen manager for tiling window managers.
 Generates a lockscreen for multiscreened i3lock.
 
