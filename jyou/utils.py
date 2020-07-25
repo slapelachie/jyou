@@ -3,7 +3,7 @@ import os
 import re
 import subprocess
 
-from .settings import DATA_PATH
+from .settings import CONFIG_PATH
 
 def md5(string):
 	"""
@@ -51,8 +51,8 @@ def get_dir_imgs(img_dir):
 	return [img.name for img in os.scandir(img_dir)
 			if img.name.lower().endswith(file_types)]
 
-def run_post_scripts(args=None):
-	POST_SCRIPTS_DIR = os.path.join(DATA_PATH, 'postscripts')
+def run_post_scripts():
+	POST_SCRIPTS_DIR = os.path.join(CONFIG_PATH, 'postscripts')
 
 	try:
 		os.makedirs(POST_SCRIPTS_DIR, exist_ok=True)
@@ -67,12 +67,6 @@ def run_post_scripts(args=None):
 		
 	for script in scripts:
 		script = os.path.join(POST_SCRIPTS_DIR, script)
-
-		# If arguments are passed
-		if args:
-			# Flatten the array to one dimension
-			script = [[script], args.split(" ")]
-			script = [y for x in script for y in x]
 
 		with open(os.devnull, 'w') as devnull:
 			subprocess.run(script, stdout=devnull, stderr=subprocess.STDOUT)

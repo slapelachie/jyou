@@ -10,11 +10,11 @@ import os.path
 import logging
 import shutil
 
-from . import utils,log
-from .settings import DATA_PATH, CONFIG_PATH, CACHE_PATH
-from .generator import LockscreenGenerate
+from jyou import utils,log,config_handler
+from jyou.settings import DATA_PATH, CONFIG_PATH, CACHE_PATH
+from jyou.generator import LockscreenGenerator
 
-logger = log.setup_logger(__name__, logging.INFO, log.defaultLoggingHandler())
+logger = log.setup_logger(__name__, logging.ERROR, log.defaultLoggingHandler())
 
 def get_args():
 	""" Get the args parsed from the command line and does arg handling stuff """
@@ -22,13 +22,10 @@ def get_args():
 	arg = argparse.ArgumentParser(description="Generate and switch lockscreen images")
 
 	arg.add_argument('-v', action='store_true',
-		help='Verbose Logging')
+		help='Verbose logging')
 
-	arg.add_argument('-q', action='store_true',
-		help='Allow only error logging')
-		
 	arg.add_argument("-g", action="store_true",
-		help="generate themes")
+		help="Generate themes")
 
 	arg.add_argument("-i", metavar="\"path/to/dir\"",
 		help="The input file or directory")
@@ -44,6 +41,9 @@ def get_args():
 
 	arg.add_argument("--clear", action="store_true",
 		help="Clear all data relating to JYOU")
+
+	arg.add_argument("--progress", action="store_true",
+		help="Display progress")
 
 	return arg
 
@@ -61,28 +61,37 @@ def parse_args(parser):
 		parser.print_help()
 		sys.exit(1)
 
-	VERBOSE_MODE = True if args.v else False
-
-	if args.q:
-		pass
+	verbose_logging = True if args.v else False
+	log_level = getLogLevel(verbose_logging)
+	logger.setLevel(log_level)
 
 	if args.i:
+		blur_strength = config_handler.compareFlagWithConfig(args.b, config_handler.parse_config()['blur'])
+		brightness = config_handler.compareFlagWithConfig(args.d, config_handler.parse_config()['brightness'])
+		progress = config_handler.compareFlagWithConfig(args.progress, config_handler.parse_config()['progress'])
+
+		generator = LockscreenGenerator(args.i)
+		generator.setBlur(blur_strength)
+		generator.setBrightness(brightness)
+		generator.setVerboseLogging(verbose_logging)
+		generator.setOverride(args.override)
+		generator.setProgress(progress)
+
 		if args.g:
-			LockscreenGenerate(args.i, VERBOSE_MODE).generate(args.b, args.d)
+			generator.generate()
 		else:
-			LockscreenGenerate(args.i, VERBOSE_MODE).update()	
+			generator.update()
 	
-	if args.clear:
+	elif args.clear:
 		clear = input("Are you sure you want to remove the cache relating to JYOU? [y/N] ").lower()
 		if(clear == "y"):
 			try:
-				shutil.rmtree(CACHE_PATH)
+				shutil.rmtree(DATA_PATH)
 			except:
 				raise
 			logger.info("Cleared JYOU cache folders")
 		else:
 			logger.warning("Canceled clearing cache folders...")
-
 
 def main():
 	# Create required directories
@@ -94,6 +103,12 @@ def main():
 
 	parser = get_args()
 	parse_args(parser)
+
+def getLogLevel(verbose_logging):
+	if verbose_logging:
+		return logging.INFO
+	else:
+		return logging.WARNING
 
 if __name__ == "__main__":
 	main()

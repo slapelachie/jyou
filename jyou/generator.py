@@ -6,23 +6,15 @@ import random
 import sys
 import logging
 import tqdm
+from PIL import Image, ImageFilter
 
 from .settings import CACHE_PATH, DATA_PATH, DEBUG_MODE
 from . import utils, log
 
-from PIL import Image, ImageFilter
+logger = log.setup_logger(__name__+'default', logging.WARN, log.defaultLoggingHandler())
+tqdm_logger = log.setup_logger(__name__+'.tqdm', logging.WARN, log.TqdmLoggingHandler())
 
-display_re = r"([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)" # Regex to find the monitor resolutions
-lockscreen_dir = os.path.join(CACHE_PATH, 'lockscreen')
-
-try:
-	os.makedirs(lockscreen_dir, exist_ok=True)
-except: raise
-
-logger = log.setup_logger(__name__+'default', logging.INFO, log.defaultLoggingHandler())
-tqdm_logger = log.setup_logger(__name__+'.tqdm', logging.INFO, log.TqdmLoggingHandler())
-
-class LockscreenGenerate:
+class LockscreenGenerator:
 	"""
 	Main class for anything to do with lockscreen.
 
@@ -30,154 +22,190 @@ class LockscreenGenerate:
 		image (str) -- location to the image ('/home/bob/pic.png')
 	"""
 
-	def __init__(self, image, verbose=False):
-		"""
-		Default function for the LockscreenGenerate class
+	def __init__(self, image):
+		self.progressbar = False
+		self.verbose_logging = False
+		self.image = None
+		self.override = False
+		self.blur_stength = 0
+		self.brightness = 1
+		self.screen_md5 = utils.md5(subprocess.check_output(["xrandr"]))[:20]
+		self.lockscreen_dir = os.path.join(DATA_PATH, 'lockscreen')
 
-		Arguments:
-			image (str) -- location to the image ('/home/bob/pic.png')
-		"""
 		if DEBUG_MODE:
 			logger.setLevel(logging.DEBUG)
 			tqdm_logger.setLevel(logging.DEBUG)
-		elif verbose:
-			logger.setLevel(15)
-			tqdm_logger.setLevel(15)
+		elif self.verbose_logging:
+			logger.setLevel(logging.INFO)
+			tqdm_logger.setLevel(logging.INFO)
 
-		if os.path.isfile(image):
-			# If the path is a file, get the image and set itself to that
-			self.image = [utils.get_image(image)]
-		elif os.path.isdir(image):
-			# If the path is a directory, get all images in it and get its absolute path
-			self.image = [utils.get_image(os.path.join(image, img)) for img in utils.get_dir_imgs(image)]
-		else:
+		try:
+			os.makedirs(self.lockscreen_dir, exist_ok=True)
+		except: raise
+
+		self.image = getImageList(image)
+		if not self.image:
 			logger.critical("File does not exist!")
 			sys.exit(1)
 
-		# Get the output of xrandr and hash it
-		self.screen_md5 = utils.md5(subprocess.check_output(["xrandr"]))[:20]
-		
+	def setVerboseLogging(self, state):
+		self.verbose_logging = state
 
-	def generate(self, blur=str(8), brightness=str(0.6), override=False):
+	def setProgress(self, state):
+		self.progressbar = state
+
+	def setOverride(self, state):
+		self.override = state
+
+	def setBlur(self, blur_stength):
+		self.blur_stength = blur_stength
+
+	def setBrightness(self, brightness):
+		self.brightness = brightness
+
+	def generate(self):
 		"""Generate the lockscreen image"""
 		# Apply this function to every image in the passed list
-		non_gen_imgs = []
+		non_generated_images = []
 		for i in range(len(self.image)):
-			image = self.image[i]	
+			image_path = self.image[i]	
+			out_path = getOutPathFromMD5(image_path, self.screen_md5, self.lockscreen_dir)
 
-			# Get the images md5 hash
-			img_md5 = utils.md5_file(image)[:20]
-			# Set the path for the final image
-			img_path = os.path.join(lockscreen_dir, img_md5 + "_" + self.screen_md5 + ".png")
+			if not os.path.isfile(out_path) or self.override:
+				non_generated_images.append({
+					'image_path': image_path,
+					'out_path': out_path
+				})				
 
-			if not os.path.isfile(img_path) or override:
-				non_gen_imgs.append([image, img_path])				
+		resolutions = getResolutions()
 
-		# Execute and get the output from xrandr
-		cmd = ['xrandr']
-		p = subprocess.check_output(cmd)
-
-		# Get all resolutions
-		resolutions = re.findall(display_re,str(p))
-
-		if len(non_gen_imgs) > 0:
-			logger.info("Generating lockscreens...")
-			for i in tqdm.tqdm(range(len(non_gen_imgs))):
-				image = non_gen_imgs[i][0]
-				img_path = non_gen_imgs[i][1]
-
-				img = Image.open(image).convert("RGB") 
-				img_width, img_height = img.size
-
-				screens = []
-				screens_offset = []
-				screens_size = []
-
-				output_img_height=0
-				output_img_width=0	
-
-				tqdm_logger.log(15, "["+ str(i+1) + "/" + str(len(self.image)) + "] Generating lockscreen for: " + image + "...")
-				# Repeat for every screen the user has
-				for resolution in resolutions:
-					width, height, screen_x, screen_y = map(int, resolution)
-	
-					if output_img_width < width+screen_x:
-						output_img_width = width+screen_x
-					
-					if output_img_height < height+screen_y:
-						output_img_height = height+screen_y
-
-					screens_size.append((width, height))
-					screens_offset.append((screen_x, screen_y))
-
-					ratio = min(img_width/width, img_height/height)
-					rwidth = int(img_width/ratio)
-					rheight = int(img_height/ratio)
-
-					crop_box = (
-						(rwidth-width)/2,
-						(rheight-height)/2,
-						(rwidth+width)/2,
-						(rheight+height)/2
-					)
-
-					img = img.resize((rwidth, rheight), Image.LANCZOS)
-					img = img.crop(crop_box)
-
-					if blur:
-						if blur.isdigit():
-							if not int(blur) == 0:
-								img = img.filter(ImageFilter.GaussianBlur(int(blur)))
-						else:
-							tqdm_logger.warning("Parsed blur is not an integer, applying no blur...")
-	
-					screens.append(img)
-	
-				# Create the background image
-				background = Image.new('RGB', (output_img_width, output_img_height), (0, 0, 0))
-
-				# Add the images in their locations onto the new image
-				for i in range(len(screens)):
-					background.paste(screens[i], screens_offset[i])
-							
-				if brightness:
-					try:
-						if not float(brightness) == 1.0:
-							background = background.point(lambda p: p * float(brightness))
-					except:
-						tqdm_logger.warning("Parsed brightness is not an integer, not changing brightness...")
-
-
+		if len(non_generated_images) > 0:
+			for i in tqdm.tqdm(range(len(non_generated_images)), bar_format=log.bar_format, disable=not self.progressbar):
 				# Save the image
-				background.save(img_path)
+				out_path = non_generated_images[i]['out_path']
+				lockscreen_image = generateLockscreenImage(non_generated_images[i]['image_path'], resolutions, self.blur_stength, self.brightness)
+				lockscreen_image.save(out_path)
 		else:
 			logger.info("No lockscreens to generate.")
 
 	def update(self):
 		""" Update the wallpaper based on the parsed image in the parent class """
+		self.image = getRandomImage(self.image)
 
-		# Get the first element of the shuffled list
-		images = self.image
-		random.shuffle(images)
-		image = images[0]
-		self.image = [image]
-
-		# Get the md5 hash of the image
-		img_md5 = utils.md5_file(image)[:20]
-		# Set the image path location
-		img_path = os.path.join(lockscreen_dir, img_md5 + "_" + self.screen_md5 + ".png")
+		image_md5 = utils.md5_file(self.image)[:20]
+		image_path = os.path.join(self.lockscreen_dir, image_md5 + "_" + self.screen_md5 + ".png")
 
 		# Copy the image if it exists
-		if os.path.isfile(img_path):
-			symlink_path = os.path.join(CACHE_PATH, 'current_lockscreen.png')
-
-			if os.path.isfile(symlink_path):
-				os.remove(symlink_path)
-
-			os.symlink(img_path, symlink_path)
+		if os.path.isfile(image_path):
+			symlink_path = os.path.join(DATA_PATH, 'current_lockscreen.png')
+			symlinkImage(image_path, symlink_path)
 
 			# Run postscripts
-			utils.run_post_scripts(image)
+			utils.run_post_scripts()
 		else:
 			self.generate()
 			self.update()
+
+def getResolutions():
+	display_re = r"([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)" # Regex to find the monitor resolutions
+	cmd = ['xrandr']
+	p = subprocess.check_output(cmd)
+	return re.findall(display_re,str(p))
+
+def getOutPathFromMD5(image_path, screen_md5, out_dir):
+	image_md5 = utils.md5_file(image_path)[:20]
+	return os.path.join(out_dir, image_md5 + "_" + screen_md5 + ".png")
+
+def generateLockscreenImage(image_path, resolutions, blur, brightness):
+	screens = []
+	screens_offset = []
+	output_image_width, output_image_height = getOutputResolution(resolutions)
+	image = Image.open(image_path).convert("RGB") 
+
+	# Repeat for every screen the user has
+	for resolution in resolutions:
+		resolution_image = cropImageToResolution(image, resolution)
+		if blur:
+			resolution_image = blurImage(resolution_image, blur)
+		screens.append(resolution_image)
+		screens_offset.append(getResolutionOffset(resolution))
+
+	output_image = Image.new('RGB', (output_image_width, output_image_height), (0, 0, 0))
+
+	# Add the images in their locations onto the new image
+	for i in range(len(screens)):
+		output_image.paste(screens[i], screens_offset[i])
+				
+	if brightness:
+		try:
+			if not float(brightness) == 1.0:
+				output_image = output_image.point(lambda p: p * float(brightness))
+		except:
+			tqdm_logger.warning("Parsed brightness is not an integer, not changing brightness...")
+
+	return output_image
+
+def getResolutionDimensions(resolution):
+	width, height, screen_x, screen_y = map(int, resolution)
+	return (width, height)
+
+def getResolutionOffset(resolution):
+	width, height, screen_x, screen_y = map(int, resolution)
+	return (screen_x, screen_y)
+
+def getOutputResolution(resolutions):
+	output_width, output_height = (0,0)
+	for resolution in resolutions:
+		resolution_width, resolution_height = getResolutionDimensions(resolution)
+		resolution_x, resolution_y = getResolutionOffset(resolution)
+
+		if output_width < resolution_width+resolution_x:
+			output_width = resolution_width+resolution_x
+	
+		if output_height < resolution_height+resolution_y:
+			output_height = resolution_height+resolution_y
+
+	return (output_width, output_height)
+
+def cropImageToResolution(image, resolution):
+	image_width, image_height = image.size
+	width, height = getResolutionDimensions(resolution)
+
+	ratio = min(image_width/width, image_height/height)
+	ratio_dimensions = (int(image_width/ratio), int(image_height/ratio))
+	resized_image = image.resize(ratio_dimensions, Image.LANCZOS)
+
+	crop_box = (
+		(ratio_dimensions[0]-width)/2,
+		(ratio_dimensions[1]-height)/2,
+		(ratio_dimensions[0]+width)/2,
+		(ratio_dimensions[1]+height)/2
+	)
+
+	cropped_image = resized_image.crop(crop_box)
+
+	return cropped_image
+
+def blurImage(image, blur):
+	if not int(blur) == 0:
+		image = image.filter(ImageFilter.GaussianBlur(int(blur)))
+
+	return image
+
+def getImageList(image_path):
+	if os.path.isfile(image_path):
+		return [utils.get_image(image_path)]
+	elif os.path.isdir(image_path):
+		return [utils.get_image(os.path.join(image_path, img)) for img in utils.get_dir_imgs(image_path)]
+	else:
+		return None
+
+def getRandomImage(images):
+	random.shuffle(images)
+	return images[0]
+
+def symlinkImage(image_path, symlink_path):
+	if os.path.isfile(symlink_path):
+		os.remove(symlink_path)
+
+	os.symlink(image_path, symlink_path)
