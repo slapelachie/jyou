@@ -52,7 +52,7 @@ class LockscreenGenerator:
 		self.verbose_logging = state
 
 	def setOutputPath(self, path):
-		self.lockscreen_dir = os.path.expanduser(path)
+		self.lockscreen_dir = os.path.expandvars(os.path.expanduser(path))
 
 	def setProgress(self, state):
 		self.progressbar = state
@@ -93,9 +93,10 @@ class LockscreenGenerator:
 
 	def update(self):
 		""" Update the wallpaper based on the parsed image in the parent class """
-		self.image = getRandomImage(self.image)
+		image = getRandomImage(self.image)
+		self.image = [image] 
 
-		image_md5 = utils.md5_file(self.image)[:20]
+		image_md5 = utils.md5_file(image)[:20]
 		image_path = os.path.join(self.lockscreen_dir, image_md5 + "_" + self.screen_md5 + ".png")
 
 		# Copy the image if it exists

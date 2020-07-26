@@ -9,7 +9,7 @@ config_file_path = os.path.join(settings.CONFIG_PATH, 'config.json')
 config_default = {
     'blur': 0,
     'brightness': 1,
-    'out_directory': '$HOME/.local/share/',
+    'out_directory': '$HOME/.local/share/jyou/',
     'progress': False,
     'debug': False
 }
