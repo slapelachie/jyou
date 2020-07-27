@@ -24,3 +24,7 @@ class TestGenerator(unittest.TestCase):
         image = Image.open('tests/assets/test.jpg')
         new_image = generator.cropImageToResolution(image, (50,50,0,0))
         self.assertEqual(new_image.size, (50,50))
+
+    def test_convertResolutionToList(self):
+        resolution_list = generator.convertResolutionToList("1920x1080+0+0, 1920x1080+1920+0")
+        self.assertEqual(resolution_list, [(1920,1080,0,0),(1920,1080,1920,0)])

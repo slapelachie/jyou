@@ -29,7 +29,8 @@ class LockscreenGenerator:
 		self.override = False
 		self.blur_stength = 0
 		self.brightness = 1
-		self.screen_md5 = utils.md5(subprocess.check_output(["xrandr"]))[:20]
+		self.resolutions = getResolutions()
+		self.screen_md5 = utils.md5(''.join(convertResolutionToList(self.resolutions)))[:20]
 		self.lockscreen_dir = os.path.join(DATA_PATH, 'lockscreen')
 
 		if DEBUG_MODE:
@@ -65,6 +66,11 @@ class LockscreenGenerator:
 
 	def setBrightness(self, brightness):
 		self.brightness = brightness
+
+	def setResolution(self, resolution):
+		# [(1920,1080,0,0), (1920,1080,1920,0)]
+		self.resolutions = resolution
+		self.screen_md5 = utils.md5(''.join(convertResolutionToList(self.resolutions)))
 
 	def generate(self):
 		"""Generate the lockscreen image"""
@@ -111,10 +117,9 @@ class LockscreenGenerator:
 			self.update()
 
 def getResolutions():
-	display_re = r"([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)" # Regex to find the monitor resolutions
 	cmd = ['xrandr']
 	p = subprocess.check_output(cmd)
-	return re.findall(display_re,str(p))
+	return convertResolutionToList(str(p))
 
 def getOutPathFromMD5(image_path, screen_md5, out_dir):
 	image_md5 = utils.md5_file(image_path)[:20]
@@ -213,3 +218,9 @@ def symlinkImage(image_path, symlink_path):
 		os.remove(symlink_path)
 
 	os.symlink(image_path, symlink_path)
+
+def convertResolutionToList(resolution_string):
+	# "1920x1080+0+0"
+	display_re = r"([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)" # Regex to find the monitor resolutions
+	resolution_list = [[int(j) for j in i] for i in re.findall(display_re,resolution_string)]
+	return [tuple(i) for i in resolution_list]
