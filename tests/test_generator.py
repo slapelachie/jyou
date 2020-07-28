@@ -1,7 +1,10 @@
 import unittest
+import os
 from PIL import Image
 
 from jyou import generator
+
+out_path = '/tmp/jyou-git/'
 
 class TestGenerator(unittest.TestCase):
     def test_getOutPathFromMD5(self):
@@ -28,3 +31,25 @@ class TestGenerator(unittest.TestCase):
     def test_convertResolutionToList(self):
         resolution_list = generator.convertResolutionToList("1920x1080+0+0, 1920x1080+1920+0")
         self.assertEqual(resolution_list, [(1920,1080,0,0),(1920,1080,1920,0)])
+
+    def test_generateSingleFileSingleResolution(self):
+        lockscreen_out_dir = os.path.join(out_path, 'lockscreen')
+        backend = generator.LockscreenGenerator('tests/assets/test.jpg')
+        backend.setOutputPath(lockscreen_out_dir)
+        backend.setResolution([(1920,1080,0,0)])
+        backend.generate()
+        output_image_path = os.path.join(lockscreen_out_dir, '31084f2c8577234aeb55_34bca0784f2e76070371dc4afc9a97fd.png') 
+        output_image_size = Image.open(output_image_path).size
+        self.assertEqual(output_image_size, (1920,1080))
+        os.remove(output_image_path)
+
+    def test_generateSingleFileDoubleResolution(self):
+        lockscreen_out_dir = os.path.join(out_path, 'lockscreen')
+        backend = generator.LockscreenGenerator('tests/assets/test.jpg')
+        backend.setOutputPath(lockscreen_out_dir)
+        backend.setResolution([(1920,1080,0,0),(1920,1080,1920,0)])
+        backend.generate()
+        output_image_path = os.path.join(lockscreen_out_dir, '31084f2c8577234aeb55_2dc53337e74f76026e6abe67cbc00e42.png') 
+        output_image_size = Image.open(output_image_path).size
+        self.assertEqual(output_image_size, ((1920*2),1080))
+        os.remove(output_image_path)

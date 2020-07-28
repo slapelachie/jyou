@@ -54,6 +54,7 @@ class LockscreenGenerator:
 
 	def setOutputPath(self, path):
 		self.lockscreen_dir = os.path.expandvars(os.path.expanduser(path))
+		os.makedirs(self.lockscreen_dir, exist_ok=True)
 
 	def setProgress(self, state):
 		self.progressbar = state
@@ -86,13 +87,11 @@ class LockscreenGenerator:
 					'out_path': out_path
 				})				
 
-		resolutions = getResolutionList()
-
 		if len(non_generated_images) > 0:
 			for i in tqdm.tqdm(range(len(non_generated_images)), bar_format=log.bar_format, disable=not self.progressbar):
 				# Save the image
 				out_path = non_generated_images[i]['out_path']
-				lockscreen_image = generateLockscreenImage(non_generated_images[i]['image_path'], resolutions, self.blur_stength, self.brightness)
+				lockscreen_image = generateLockscreenImage(non_generated_images[i]['image_path'], self.resolutions, self.blur_stength, self.brightness)
 				lockscreen_image.save(out_path)
 		else:
 			logger.info("No lockscreens to generate.")
