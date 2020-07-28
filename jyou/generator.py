@@ -29,8 +29,8 @@ class LockscreenGenerator:
 		self.override = False
 		self.blur_stength = 0
 		self.brightness = 1
-		self.resolutions = getResolutions()
-		self.screen_md5 = utils.md5(''.join(convertResolutionToList(self.resolutions)))[:20]
+		self.resolutions = getResolutionList()
+		self.screen_md5 = utils.md5(','.join(str(i) for j in self.resolutions for i in j))[:20]
 		self.lockscreen_dir = os.path.join(DATA_PATH, 'lockscreen')
 
 		if DEBUG_MODE:
@@ -70,7 +70,7 @@ class LockscreenGenerator:
 	def setResolution(self, resolution):
 		# [(1920,1080,0,0), (1920,1080,1920,0)]
 		self.resolutions = resolution
-		self.screen_md5 = utils.md5(''.join(convertResolutionToList(self.resolutions)))
+		self.screen_md5 = utils.md5(','.join(str(i) for j in self.resolutions for i in j))
 
 	def generate(self):
 		"""Generate the lockscreen image"""
@@ -86,7 +86,7 @@ class LockscreenGenerator:
 					'out_path': out_path
 				})				
 
-		resolutions = getResolutions()
+		resolutions = getResolutionList()
 
 		if len(non_generated_images) > 0:
 			for i in tqdm.tqdm(range(len(non_generated_images)), bar_format=log.bar_format, disable=not self.progressbar):
@@ -116,7 +116,7 @@ class LockscreenGenerator:
 			self.generate()
 			self.update()
 
-def getResolutions():
+def getResolutionList():
 	cmd = ['xrandr']
 	p = subprocess.check_output(cmd)
 	return convertResolutionToList(str(p))
