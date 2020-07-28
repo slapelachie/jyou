@@ -31,7 +31,7 @@ class LockscreenGenerator:
 		self.brightness = 1
 		self.resolutions = getResolutionList()
 		self.screen_md5 = utils.md5(','.join(str(i) for j in self.resolutions for i in j))[:20]
-		self.lockscreen_dir = os.path.join(DATA_PATH, 'lockscreen')
+		self.out_dir = DATA_PATH
 
 		if DEBUG_MODE:
 			logger.setLevel(logging.DEBUG)
@@ -41,7 +41,7 @@ class LockscreenGenerator:
 			tqdm_logger.setLevel(logging.INFO)
 
 		try:
-			os.makedirs(self.lockscreen_dir, exist_ok=True)
+			os.makedirs(self.out_dir, exist_ok=True)
 		except: raise
 
 		self.image = getImageList(image)
@@ -53,8 +53,8 @@ class LockscreenGenerator:
 		self.verbose_logging = state
 
 	def setOutputPath(self, path):
-		self.lockscreen_dir = os.path.expandvars(os.path.expanduser(path))
-		os.makedirs(self.lockscreen_dir, exist_ok=True)
+		self.out_dir = os.path.expandvars(os.path.expanduser(path))
+		os.makedirs(os.path.join(self.out_dir, 'lockscreen'), exist_ok=True)
 
 	def setProgress(self, state):
 		self.progressbar = state
@@ -77,9 +77,10 @@ class LockscreenGenerator:
 		"""Generate the lockscreen image"""
 		# Apply this function to every image in the passed list
 		non_generated_images = []
+		lockscreen_dir = os.path.join(self.out_dir, 'lockscreen')
 		for i in range(len(self.image)):
 			image_path = self.image[i]	
-			out_path = getOutPathFromMD5(image_path, self.screen_md5, self.lockscreen_dir)
+			out_path = getOutPathFromMD5(image_path, self.screen_md5, lockscreen_dir)
 
 			if not os.path.isfile(out_path) or self.override:
 				non_generated_images.append({
@@ -98,15 +99,16 @@ class LockscreenGenerator:
 
 	def update(self):
 		""" Update the wallpaper based on the parsed image in the parent class """
+		lockscreen_dir = os.path.join(self.out_dir, 'lockscreen')
 		image = getRandomImage(self.image)
 		self.image = [image] 
 
 		image_md5 = utils.md5_file(image)[:20]
-		image_path = os.path.join(self.lockscreen_dir, image_md5 + "_" + self.screen_md5 + ".png")
+		image_path = os.path.join(lockscreen_dir, image_md5 + "_" + self.screen_md5 + ".png")
 
 		# Copy the image if it exists
 		if os.path.isfile(image_path):
-			symlink_path = os.path.join(DATA_PATH, 'current_lockscreen.png')
+			symlink_path = os.path.join(self.out_dir, 'current_lockscreen.png')
 			symlinkImage(image_path, symlink_path)
 
 			# Run postscripts
