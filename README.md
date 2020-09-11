@@ -1,5 +1,8 @@
 # JYOU
 ![Run Tests](https://github.com/slapelachie/jyou/workflows/Run%20Tests/badge.svg)
+
+[![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/L3L726D8I)
+
 Simple lockscreen manager for tiling window managers.
 Generates a lockscreen for multiscreened i3lock.
 
