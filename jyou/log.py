@@ -1,19 +1,20 @@
+"""Logging functions"""
 import logging
 import tqdm
-import sys
 
-default_format = "[%(levelname)s\033[0m] " "\033[1;31m%(module)s\033[0m: " "%(message)s"
-
-bar_format = "{percentage:3.0f}% {n}/{total}"
+DEFAULT_FORMAT = "[%(levelname)s\033[0m] " "\033[1;31m%(module)s\033[0m: " "%(message)s"
+BAR_FORMAT = "{percentage:3.0f}% {n}/{total}"
 
 
 class TqdmLoggingHandler(logging.Handler):
+    """A logging handler for tqdm progress stuff"""
+
     def __init__(self, level=logging.NOTSET):
         super().__init__(level)
 
     def emit(self, record):
         try:
-            self.setFormatter(logging.Formatter(default_format))
+            self.setFormatter(logging.Formatter(DEFAULT_FORMAT))
             msg = self.format(record)
             tqdm.tqdm.write(msg)
             self.flush()
@@ -23,10 +24,12 @@ class TqdmLoggingHandler(logging.Handler):
             self.handleError(record)
 
 
-class defaultLoggingHandler(logging.StreamHandler):
+class DefaultLoggingHandler(logging.StreamHandler):
+    """A logging handler for normal logging"""
+
     def emit(self, record):
         try:
-            self.setFormatter(logging.Formatter(default_format + "\n"))
+            self.setFormatter(logging.Formatter(DEFAULT_FORMAT + "\n"))
             msg = self.format(record)
             stream = self.stream
             stream.write(msg)
@@ -38,7 +41,7 @@ class defaultLoggingHandler(logging.StreamHandler):
 
 
 def setup_logger(name, level, handler):
-    """ Sets up the logger """
+    """Sets up the logger"""
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.addHandler(handler)

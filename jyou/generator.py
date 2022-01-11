@@ -1,44 +1,48 @@
+"""The main generation file containing tools to generate the needed images"""
 import os
 import subprocess
-import shutil
 import re
 import random
 import sys
 import logging
-import tqdm
-from PIL import Image, ImageFilter
+from typing import List, Tuple
 
-from .settings import CACHE_PATH, DATA_PATH, DEBUG_MODE
+import tqdm
+from PIL import Image, ImageFilter, ImageEnhance
+
+from .settings import DATA_PATH, DEBUG_MODE
 from . import utils, log
 
 logger = log.setup_logger(
-    __name__ + "default", logging.WARN, log.defaultLoggingHandler()
+    __name__ + "default", logging.WARN, log.DefaultLoggingHandler()
 )
 tqdm_logger = log.setup_logger(
     __name__ + ".tqdm", logging.WARN, log.TqdmLoggingHandler()
 )
 
 
+# pylint: disable=too-many-instance-attributes
 class LockscreenGenerator:
-    """
-    Main class for anything to do with lockscreen.
+    """Main class for anything to do with lockscreen"""
 
-    Arguments:
-            image (str) -- location to the image ('/home/bob/pic.png')
-    """
+    def __init__(self, image_path, **kwargs):
+        """
+        The initialisation method
 
-    def __init__(self, image):
-        self.progressbar = False
-        self.verbose_logging = False
-        self.image = None
-        self.override = False
-        self.blur_stength = 0
-        self.brightness = 1
-        self.resolutions = getResolutionList()
+        Arguments:
+            image_path (str): location to the image ('/home/bob/pic.png')
+        """
+        self.progress_bar = kwargs.get("progress_bar", False)
+        self.verbose_logging = kwargs.get("verbose_logging", False)
+        self.override = kwargs.get("override", False)
+        self.blur_strength = kwargs.get("blur_strength", 0)
+        self.brightness = kwargs.get("brightness", 1)
+        self.out_dir = kwargs.get("output_path", DATA_PATH)
+
+        self.resolutions = get_resolution_image()
         self.screen_md5 = utils.md5(
             ",".join(str(i) for j in self.resolutions for i in j)
         )[:20]
-        self.out_dir = DATA_PATH
 
         if DEBUG_MODE:
             logger.setLevel(logging.DEBUG)
@@ -47,50 +51,23 @@ class LockscreenGenerator:
             logger.setLevel(logging.INFO)
             tqdm_logger.setLevel(logging.INFO)
 
-        try:
-            os.makedirs(self.out_dir, exist_ok=True)
-        except:
-            raise
+        os.makedirs(self.out_dir, exist_ok=True)
 
-        self.image = getImageList(image)
-        if not self.image:
+        self.image_paths = get_image_path_list(image_path)
+        if not self.image_paths:
             logger.critical("File does not exist!")
             sys.exit(1)
-
-    def setVerboseLogging(self, state):
-        self.verbose_logging = state
-
-    def setOutputPath(self, path):
-        self.out_dir = os.path.expandvars(os.path.expanduser(path))
-        os.makedirs(os.path.join(self.out_dir, "lockscreen"), exist_ok=True)
-
-    def setProgress(self, state):
-        self.progressbar = state
-
-    def setOverride(self, state):
-        self.override = state
-
-    def setBlur(self, blur_stength):
-        self.blur_stength = blur_stength
-
-    def setBrightness(self, brightness):
-        self.brightness = brightness
-
-    def setResolution(self, resolution):
-        # [(1920,1080,0,0), (1920,1080,1920,0)]
-        self.resolutions = resolution
-        self.screen_md5 = utils.md5(
-            ",".join(str(i) for j in self.resolutions for i in j)
-        )
 
     def generate(self):
         """Generate the lockscreen image"""
         # Apply this function to every image in the passed list
         non_generated_images = []
         lockscreen_dir = os.path.join(self.out_dir, "lockscreen")
-        for i in range(len(self.image)):
-            image_path = self.image[i]
-            out_path = getOutPathFromMD5(image_path, self.screen_md5, lockscreen_dir)
+
+        for image_path in self.image_paths:
+            out_path = get_out_path_from_md5(
+                image_path, self.screen_md5, lockscreen_dir
+            )
 
             if not os.path.isfile(out_path) or self.override:
                 non_generated_images.append(
@@ -101,14 +78,14 @@ class LockscreenGenerator:
             for i in tqdm.tqdm(
                 range(len(non_generated_images)),
                 bar_format=log.bar_format,
-                disable=not self.progressbar,
+                disable=not self.progress_bar,
             ):
                 # Save the image
                 out_path = non_generated_images[i]["out_path"]
-                lockscreen_image = generateLockscreenImage(
+                lockscreen_image = generate_lockscreen_image(
                     non_generated_images[i]["image_path"],
                     self.resolutions,
-                    self.blur_stength,
+                    self.blur_strength,
                     self.brightness,
                 )
                 lockscreen_image.save(out_path)
@@ -116,88 +93,141 @@ class LockscreenGenerator:
             logger.info("No lockscreens to generate.")
 
     def update(self):
-        """ Update the wallpaper based on the parsed image in the parent class """
+        """Update the wallpaper based on the parsed image in the parent class"""
         lockscreen_dir = os.path.join(self.out_dir, "lockscreen")
-        image = getRandomImage(self.image)
-        self.image = [image]
+        image_path = get_random_image_path(self.image_paths)
+        self.image_paths = [image_path]
 
-        image_md5 = utils.md5_file(image)[:20]
-        image_path = os.path.join(
-            lockscreen_dir, image_md5 + "_" + self.screen_md5 + ".png"
+        image_out_path = get_out_path_from_md5(
+            image_path, self.screen_md5, lockscreen_dir
         )
-
         # Copy the image if it exists
-        if os.path.isfile(image_path):
+        if os.path.isfile(image_out_path):
             symlink_path = os.path.join(self.out_dir, "current_lockscreen.png")
-            symlinkImage(image_path, symlink_path)
+            symlink_image(image_out_path, symlink_path)
 
             # Run postscripts
-            utils.run_post_scripts()
+            utils.run_hooks()
         else:
             self.generate()
             self.update()
 
 
-def getResolutionList():
-    cmd = ["xrandr"]
-    p = subprocess.check_output(cmd)
-    return convertResolutionToList(str(p))
+def get_resolution_image() -> List[Tuple[int]]:
+    """Gets the screen resolution"""
+    display_re = r"([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)"  # Regex to find the monitor resolutions
+
+    command_output = subprocess.check_output(["xrandr"])
+    resolution_list = [
+        [int(j) for j in i] for i in re.findall(display_re, str(command_output))
+    ]
+
+    return [tuple(i) for i in resolution_list]
 
 
-def getOutPathFromMD5(image_path, screen_md5, out_dir):
+def get_out_path_from_md5(image_path: str, screen_md5: str, out_directory: str) -> str:
+    """
+    Gets the out path path from the image and screen md5
+
+    Arguments:
+        image_path (str):       the path to the image
+        screen_md5 (str):       the md5 of the screen
+        out_directory (str):    the directory to append to the start of the path
+
+    Returns:
+        (str): the generated path
+    """
     image_md5 = utils.md5_file(image_path)[:20]
-    return os.path.join(out_dir, image_md5 + "_" + screen_md5 + ".png")
+    return os.path.join(out_directory, f"{image_md5}_{screen_md5}.png")
 
 
-def generateLockscreenImage(image_path, resolutions, blur, brightness):
+def generate_lockscreen_image(
+    image_path: str, resolutions: List[Tuple[int]], blur: int, brightness: float
+) -> Image:
+    """
+    Generates the image for the lockscreen
+
+    Arguments:
+        image_path (str): the path to the image
+        resolutions (List[tuple]): the resolutions of the screens to generate for
+        blur (int): the strength of the blur to be applied
+        brightness (float): how bright the image should be
+
+    Returns:
+        (PIL.Image): the raw generated image
+    """
     screens = []
-    screens_offset = []
-    output_image_width, output_image_height = getOutputResolution(resolutions)
+
     image = Image.open(image_path).convert("RGB")
+    output_image_width, output_image_height = get_accumulative_dimensions(resolutions)
 
     # Repeat for every screen the user has
     for resolution in resolutions:
-        resolution_image = cropImageToResolution(image, resolution)
+        dimensions = get_resolution_dimensions(resolution)
+        resolution_image = crop_image_to_dimensions(image, dimensions)
         if blur:
-            resolution_image = blurImage(resolution_image, blur)
-        screens.append(resolution_image)
-        screens_offset.append(getResolutionOffset(resolution))
+            resolution_image = blur_image(resolution_image, blur)
+        screens.append([resolution_image, get_resolution_offset(resolution)])
 
     output_image = Image.new(
         "RGB", (output_image_width, output_image_height), (0, 0, 0)
     )
 
     # Add the images in their locations onto the new image
-    for i in range(len(screens)):
-        output_image.paste(screens[i], screens_offset[i])
+    for screen in screens:
+        output_image.paste(*screen)
 
     if brightness:
-        try:
-            if not float(brightness) == 1.0:
-                output_image = output_image.point(lambda p: p * float(brightness))
-        except:
-            tqdm_logger.warning(
-                "Parsed brightness is not an integer, not changing brightness..."
-            )
+        enhancer = ImageEnhance.Brightness(output_image)
+        output_image = enhancer.enhance(brightness)
 
     return output_image
 
 
-def getResolutionDimensions(resolution):
-    width, height, screen_x, screen_y = map(int, resolution)
+def get_resolution_dimensions(resolution: Tuple[int]) -> Tuple[int]:
+    """
+    Gets the width and height from the specified resolution in the form of
+    [width, height, offset_x, offset_y]
+
+    Arguments:
+        resolution (Tuple[int]): the resolution
+
+    Returns:
+        (Tuple[int]): the width and height
+    """
+    width, height, _, _ = map(int, resolution)
     return (width, height)
 
 
-def getResolutionOffset(resolution):
-    width, height, screen_x, screen_y = map(int, resolution)
+def get_resolution_offset(resolution: Tuple[int]) -> Tuple[int]:
+    """
+    Gets the x offset and y offset from the specified resolution in the form of
+    [width, height, offset_x, offset_y]
+
+    Arguments:
+        resolution (Tuple[int]): the resolution
+
+    Returns:
+        (Tuple[int]): the x offset and the y offset
+    """
+    _, _, screen_x, screen_y = map(int, resolution)
     return (screen_x, screen_y)
 
 
-def getOutputResolution(resolutions):
+def get_accumulative_dimensions(resolutions: List[Tuple[int]]) -> Tuple(int):
+    """
+    Gets the accumlative dimensions of the given resolutions
+
+    Arguments:
+        resolutions (List[Tuple[int]]): the list of resolutions
+
+    Returns:
+        (Tuple[int]): the width and height of the accumlative dimensions
+    """
     output_width, output_height = (0, 0)
     for resolution in resolutions:
-        resolution_width, resolution_height = getResolutionDimensions(resolution)
-        resolution_x, resolution_y = getResolutionOffset(resolution)
+        resolution_width, resolution_height = get_resolution_dimensions(resolution)
+        resolution_x, resolution_y = get_resolution_offset(resolution)
 
         if output_width < resolution_width + resolution_x:
             output_width = resolution_width + resolution_x
@@ -208,9 +238,19 @@ def getOutputResolution(resolutions):
     return (output_width, output_height)
 
 
-def cropImageToResolution(image, resolution):
+def crop_image_to_dimensions(image: Image, dimensions: Tuple[int]) -> Image:
+    """
+    Crops the image to the specified dimensions
+
+    Arguments:
+        image (PIL.Image): the image to be cropped
+        dimensions (Tuple[int]): the width and height to be cropped to
+
+    Returns:
+        (PIL.Image): the cropped image
+    """
     image_width, image_height = image.size
-    width, height = getResolutionDimensions(resolution)
+    width, height = get_resolution_dimensions(dimensions)
 
     ratio = min(image_width / width, image_height / height)
     ratio_dimensions = (int(image_width / ratio), int(image_height / ratio))
@@ -228,41 +268,64 @@ def cropImageToResolution(image, resolution):
     return cropped_image
 
 
-def blurImage(image, blur):
-    if not int(blur) == 0:
+def blur_image(image: Image, blur: int) -> Image:
+    """
+    Blur the image by the strength given
+
+    Arguments:
+        image (PIL.Image): the image to be blurred
+        blur (int): the strength to blur the image
+
+    Returns:
+        (PIL.Image): the blurred image
+    """
+    if int(blur) != 0:
         image = image.filter(ImageFilter.GaussianBlur(int(blur)))
 
     return image
 
 
-def getImageList(image_path):
-    if os.path.isfile(image_path):
-        return [utils.get_image(image_path)]
-    elif os.path.isdir(image_path):
-        return [
-            utils.get_image(os.path.join(image_path, img))
-            for img in utils.get_dir_imgs(image_path)
-        ]
-    else:
-        return None
+def get_image_path_list(image_directory: str) -> List[str]:
+    """
+    Gets the absolute image paths within a directory
+
+    Arguments:
+        image_directory (str): the path to the image or the directory
+
+    Returns:
+        (List[str]): the list of absolute paths to images
+    """
+    if os.path.isfile(image_directory):
+        return [utils.get_absolute_image_path(image_directory)]
+
+    return [
+        utils.get_absolute_image_path(os.path.join(image_directory, img))
+        for img in utils.get_directory_image_paths(image_directory)
+    ]
 
 
-def getRandomImage(images):
-    random.shuffle(images)
-    return images[0]
+def get_random_image_path(image_paths: List[str]) -> str:
+    """Gets a random path to a image from a given list
+
+    Arguments:
+        image_paths (List[str]): a list containing paths to images
+
+    Returns:
+        (str): a randomly picked image path
+    """
+    random.shuffle(image_paths)
+    return image_paths[0]
 
 
-def symlinkImage(image_path, symlink_path):
+def symlink_image(image_path: str, symlink_path: str):
+    """
+    Symlink an image to a given path
+
+    Arguments:
+        image_path (str):   the path to the original image
+        symlink_path(str):  the path to symlink to
+    """
     if os.path.isfile(symlink_path):
         os.remove(symlink_path)
 
     os.symlink(image_path, symlink_path)
-
-
-def convertResolutionToList(resolution_string):
-    # "1920x1080+0+0"
-    display_re = r"([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)"  # Regex to find the monitor resolutions
-    resolution_list = [
-        [int(j) for j in i] for i in re.findall(display_re, resolution_string)
-    ]
-    return [tuple(i) for i in resolution_list]

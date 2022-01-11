@@ -10,15 +10,15 @@ import os.path
 import logging
 import shutil
 
-from . import utils, log, config_handler
-from .settings import DATA_PATH, CONFIG_PATH, CACHE_PATH
+from . import log, config_handler
+from .settings import DATA_PATH, CONFIG_PATH
 from .generator import LockscreenGenerator
 
-logger = log.setup_logger(__name__, logging.ERROR, log.defaultLoggingHandler())
+logger = log.setup_logger(__name__, logging.ERROR, log.DefaultLoggingHandler())
 
 
 def get_args():
-    """ Get the args parsed from the command line and does arg handling stuff """
+    """Get the args parsed from the command line and does arg handling stuff"""
 
     arg = argparse.ArgumentParser(description="Generate and switch lockscreen images")
 
@@ -63,12 +63,12 @@ def parse_args(parser):
         parser.print_help()
         sys.exit(1)
 
-    verbose_logging = True if args.v else False
-    log_level = getLogLevel(verbose_logging)
+    verbose_logging = bool(args.v)
+    log_level = get_log_level(verbose_logging)
     logger.setLevel(log_level)
 
     if args.i:
-        blur_strength = config_handler.compareFlagWithConfig(
+        blur_strength = config_handler.compare_flag_with_config(
             args.b, config_handler.parse_config()["blur"]
         )
         brightness = config_handler.compareFlagWithConfig(
@@ -79,13 +79,17 @@ def parse_args(parser):
         )
         output_path = config_handler.parse_config()["out_directory"]
 
-        generator = LockscreenGenerator(args.i)
-        generator.setBlur(blur_strength)
-        generator.setBrightness(brightness)
-        generator.setVerboseLogging(verbose_logging)
-        generator.setOverride(args.override)
-        generator.setProgress(progress)
-        generator.setOutputPath(output_path)
+        generator = LockscreenGenerator(
+            args.i,
+            {
+                "progress_bar": progress,
+                "verbose_logging": verbose_logging,
+                "override": args.override,
+                "blur_strength": blur_strength,
+                "brightness": brightness,
+                "output_path": output_path,
+            },
+        )
 
         if args.g:
             generator.generate()
@@ -97,10 +101,7 @@ def parse_args(parser):
             "Are you sure you want to remove the cache relating to JYOU? [y/N] "
         ).lower()
         if clear == "y":
-            try:
-                shutil.rmtree(DATA_PATH)
-            except:
-                raise
+            shutil.rmtree(DATA_PATH)
             logger.info("Cleared JYOU cache folders")
         else:
             logger.warning("Canceled clearing cache folders...")
@@ -108,21 +109,18 @@ def parse_args(parser):
 
 def main():
     # Create required directories
-    try:
-        os.makedirs(DATA_PATH, exist_ok=True)
-        os.makedirs(CONFIG_PATH, exist_ok=True)
-    except:
-        raise
+    os.makedirs(DATA_PATH, exist_ok=True)
+    os.makedirs(CONFIG_PATH, exist_ok=True)
 
     parser = get_args()
     parse_args(parser)
 
 
-def getLogLevel(verbose_logging):
+def get_log_level(verbose_logging):
     if verbose_logging:
         return logging.INFO
-    else:
-        return logging.WARNING
+
+    return logging.WARNING
 
 
 if __name__ == "__main__":
