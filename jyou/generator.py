@@ -63,6 +63,7 @@ class LockscreenGenerator:
         # Apply this function to every image in the passed list
         non_generated_images = []
         lockscreen_dir = os.path.join(self.out_dir, "lockscreen")
+        os.makedirs(lockscreen_dir, exist_ok=True)
 
         for image_path in self.image_paths:
             out_path = get_out_path_from_md5(
@@ -77,7 +78,7 @@ class LockscreenGenerator:
         if len(non_generated_images) > 0:
             for i in tqdm.tqdm(
                 range(len(non_generated_images)),
-                bar_format=log.bar_format,
+                bar_format=log.BAR_FORMAT,
                 disable=not self.progress_bar,
             ):
                 # Save the image
@@ -214,7 +215,7 @@ def get_resolution_offset(resolution: Tuple[int]) -> Tuple[int]:
     return (screen_x, screen_y)
 
 
-def get_accumulative_dimensions(resolutions: List[Tuple[int]]) -> Tuple(int):
+def get_accumulative_dimensions(resolutions: List[Tuple[int]]) -> Tuple[int]:
     """
     Gets the accumlative dimensions of the given resolutions
 
@@ -250,7 +251,7 @@ def crop_image_to_dimensions(image: Image, dimensions: Tuple[int]) -> Image:
         (PIL.Image): the cropped image
     """
     image_width, image_height = image.size
-    width, height = get_resolution_dimensions(dimensions)
+    width, height = dimensions
 
     ratio = min(image_width / width, image_height / height)
     ratio_dimensions = (int(image_width / ratio), int(image_height / ratio))
