@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+"""
+JYOU
+Author: slapeLachie <lslape@slapelachie.xyz>
 
-# JYOU
-# Author: SlapeLachie
-# Lockscreen manager
+Simple lockscreen manager for tiling window managers. Generates a lockscreen for
+multiscreened i3lock.
+"""
 
 import argparse
 import sys
@@ -23,27 +26,20 @@ def get_args():
     arg = argparse.ArgumentParser(description="Generate and switch lockscreen images")
 
     arg.add_argument("-v", action="store_true", help="Verbose logging")
-
     arg.add_argument("-g", action="store_true", help="Generate themes")
-
     arg.add_argument("-i", metavar='"path/to/dir"', help="The input file or directory")
-
     arg.add_argument("-b", metavar="radius", help="Radius for the blur")
-
     arg.add_argument(
         "-d",
         metavar="brightness",
         help="The brightness of the image (darker < 1.0 < lighter)",
     )
-
     arg.add_argument(
-        "--override", action="store_true", help="Override exisiting lockscreen"
+        "--override", action="store_true", help="Override exisiting lockscreen file"
     )
-
     arg.add_argument(
         "--clear", action="store_true", help="Clear all data relating to JYOU"
     )
-
     arg.add_argument("--progress", action="store_true", help="Display progress")
 
     return arg

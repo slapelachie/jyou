@@ -4,7 +4,7 @@ LONG_DESC = open("README.md").read()
 
 setup(
     name="JYOU",
-    version="1.1b0",
+    version="1.1rc0",
     description="Simple lockscreen manager for tiling window managers. Generates a lockscreen for multiscreened i3locks",
     long_description_content_type="text/markdown",
     long_description=LONG_DESC,
