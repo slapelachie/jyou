@@ -5,7 +5,7 @@ import json
 from typing import Dict
 
 import pickle
-from . import settings
+from jyou import settings
 
 CONFIG_FILE_PATH = os.path.join(settings.CONFIG_PATH, "config.json")
 

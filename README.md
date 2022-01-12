@@ -12,17 +12,18 @@ If you ever get stuck on the syntax of this command, execute: `jyou -h` for the 
 ### Arguments
 The arguments are the following:
 
-|Argument  |Usage|
+|Argument|Usage|
 |----------|---------------------------------------------------|
-|-h, --help|Shows the help message for the wallpaper subcommand|
-|-v        |Allows verbose logging|
-|-g        |Switch for generating the lockscreen|
-|-i        |The input file|
-|-b        |The radius to blur|
-|-d        |The darkness (darker < 1.0 < lighter)|
-|--override|Override existing lockscreen file|
-|--clear   |Clears the cache|
-|--progress|Displays the progress|
+|-h, --help			|Shows the help message for the wallpaper subcommand|
+|-v, --version		|Display current version information|
+|-g, --generate		|Switch for generating the lockscreen|
+|-i, --input		|The input file|
+|-r, --radius		|The radius to blur|
+|-b, --brightness	|The brightness (darker < 1.0 < lighter)|
+|--verbose			|Allows verbose logging|
+|--override			|Override existing lockscreen file|
+|--clear			|Clears the cache|
+|--progress			|Displays the progress|
 
 ## Installation
 

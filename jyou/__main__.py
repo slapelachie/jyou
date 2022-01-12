@@ -13,9 +13,10 @@ import os.path
 import logging
 import shutil
 
-from . import log, config_handler
-from .settings import DATA_PATH, CONFIG_PATH
-from .generator import LockscreenGenerator
+from jyou.__init__ import __version__, __author__, __email__
+from jyou import log, config_handler
+from jyou.settings import DATA_PATH, CONFIG_PATH
+from jyou.generator import LockscreenGenerator
 
 logger = log.setup_logger(__name__, logging.ERROR, log.DefaultLoggingHandler())
 
@@ -25,12 +26,18 @@ def get_args():
 
     arg = argparse.ArgumentParser(description="Generate and switch lockscreen images")
 
-    arg.add_argument("-v", action="store_true", help="Verbose logging")
-    arg.add_argument("-g", action="store_true", help="Generate themes")
-    arg.add_argument("-i", metavar='"path/to/dir"', help="The input file or directory")
-    arg.add_argument("-b", metavar="radius", help="Radius for the blur")
     arg.add_argument(
-        "-d",
+        "-v", "--version", action="store_true", help="Display current version"
+    )
+    arg.add_argument("-g", "--generate", action="store_true", help="Generate themes")
+    arg.add_argument(
+        "-i", "--input", metavar='"path/to/dir"', help="The input file or directory"
+    )
+    arg.add_argument("-r", "--radius", metavar="radius", help="Radius for the blur")
+    arg.add_argument("--verbose", action="store_true", help="Verbose logging")
+    arg.add_argument(
+        "-b",
+        "--brightness",
         metavar="brightness",
         help="The brightness of the image (darker < 1.0 < lighter)",
     )
@@ -59,16 +66,20 @@ def parse_args(parser):
         parser.print_help()
         sys.exit(1)
 
-    verbose_logging = bool(args.v)
+    if args.version:
+        print(f"JYOU {__version__} by {__author__} <{__email__}>")
+        sys.exit(0)
+
+    verbose_logging = bool(args.verbose)
     log_level = get_log_level(verbose_logging)
     logger.setLevel(log_level)
 
-    if args.i:
+    if args.input:
         blur_strength = config_handler.compare_flag_with_config(
-            args.b, config_handler.parse_config()["blur"]
+            args.radius, config_handler.parse_config()["blur"]
         )
         brightness = config_handler.compare_flag_with_config(
-            args.d, config_handler.parse_config()["brightness"]
+            args.brightness, config_handler.parse_config()["brightness"]
         )
         progress = config_handler.compare_flag_with_config(
             args.progress, config_handler.parse_config()["progress"]
@@ -76,7 +87,7 @@ def parse_args(parser):
         output_path = config_handler.parse_config()["out_directory"]
 
         generator = LockscreenGenerator(
-            args.i,
+            args.input,
             progress_bar=progress,
             verbose_logging=verbose_logging,
             override=args.override,
@@ -85,7 +96,7 @@ def parse_args(parser):
             output_path=output_path,
         )
 
-        if args.g:
+        if args.generate:
             generator.generate()
         else:
             generator.update()
